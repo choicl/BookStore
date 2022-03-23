@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using BookStore.API.Data;
+using BookStore.API.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 var connString = builder.Configuration.GetConnectionString("BookStoreDbConnection");
 builder.Services.AddDbContext<BookStoreDbContext>(options => options.UseSqlServer(connString));
+builder.Services.AddAutoMapper(typeof(MapperConfig));
 // Add services to the container.
 
 builder.Services.AddControllers();

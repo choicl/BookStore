@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookStore.API.Data;
+using BookStore.API.DTO_Models.Author;
+using AutoMapper;
 
 namespace BookStore.API.Controllers
 {
@@ -15,17 +17,21 @@ namespace BookStore.API.Controllers
     public class AuthorsController : ControllerBase
     {
         private readonly BookStoreDbContext _context;
+        private readonly IMapper mapper;
 
-        public AuthorsController(BookStoreDbContext context)
+        public AuthorsController(BookStoreDbContext context, IMapper mapper)
         {
             _context = context;
+            this.mapper = mapper;
         }
 
         // GET: api/Authors
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Author>>> GetAuthors()
+        public async Task<ActionResult<IEnumerable<AuthorReadOnlyDTO>>> GetAuthors()
         {
-            return await _context.Authors.ToListAsync();
+            var authors = await _context.Authors.ToListAsync();
+            var authorsDTO = mapper.Map<IEnumerable<AuthorReadOnlyDTO>>(authors);
+            return Ok(authorsDTO);
         }
 
         // GET: api/Authors/5
@@ -39,19 +45,26 @@ namespace BookStore.API.Controllers
                 return NotFound();
             }
 
-            return author;
+            var authorDTO = mapper.Map<AuthorReadOnlyDTO>(author);
+            return Ok(authorDTO);
         }
 
         // PUT: api/Authors/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutAuthor(int id, Author author)
+        public async Task<IActionResult> PutAuthor(int id, AuthorUpdateDTO authorDTO)
         {
-            if (id != author.Id)
+            if (id != authorDTO.Id)
             {
                 return BadRequest();
             }
 
+            var author = await _context.Authors.FindAsync(id);
+            if (author == null)
+            {
+                return NotFound();
+            }
+            mapper.Map(authorDTO, author);
             _context.Entry(author).State = EntityState.Modified;
 
             try
@@ -60,7 +73,7 @@ namespace BookStore.API.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!await AuthorExistsAsync(id))
+                if (!await AuthorExists(id))
                 {
                     return NotFound();
                 }
@@ -76,9 +89,10 @@ namespace BookStore.API.Controllers
         // POST: api/Authors
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Author>> PostAuthor(Author author)
+        public async Task<ActionResult<AuthorCreateDTO>> PostAuthor(AuthorCreateDTO authorDTO)
         {
-            _context.Authors.Add(author);
+            var author = mapper.Map<Author>(authorDTO);
+            await _context.Authors.AddAsync(author);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetAuthor), new { id = author.Id }, author);
@@ -100,7 +114,7 @@ namespace BookStore.API.Controllers
             return NoContent();
         }
 
-        private async Task<bool> AuthorExistsAsync(int id)
+        private async Task<bool> AuthorExists(int id)
         {
             return await _context.Authors.AnyAsync(e => e.Id == id);
         }

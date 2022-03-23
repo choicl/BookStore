@@ -14,9 +14,9 @@ builder.Services.AddSwaggerGen();
 //setting up logger
 //ctx-configuration context
 //lc-logging configuration
-builder.Host.UseSerilog((ctx,lc)=> 
-lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
-//
+builder.Host.UseSerilog((ctx, lc) => 
+    lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", 

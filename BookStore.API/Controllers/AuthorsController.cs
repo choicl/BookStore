@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using BookStore.API.Data;
 using BookStore.API.DTO_Models.Author;
 using AutoMapper;
+using BookStore.API.Static;
 
 namespace BookStore.API.Controllers
 {
@@ -18,20 +19,30 @@ namespace BookStore.API.Controllers
     {
         private readonly BookStoreDbContext _context;
         private readonly IMapper mapper;
+        private readonly ILogger<AuthorsController> logger;
 
-        public AuthorsController(BookStoreDbContext context, IMapper mapper)
+        public AuthorsController(BookStoreDbContext context, IMapper mapper, ILogger<AuthorsController> logger)
         {
             _context = context;
             this.mapper = mapper;
+            this.logger = logger;
         }
 
         // GET: api/Authors
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AuthorReadOnlyDTO>>> GetAuthors()
         {
-            var authors = await _context.Authors.ToListAsync();
-            var authorsDTO = mapper.Map<IEnumerable<AuthorReadOnlyDTO>>(authors);
-            return Ok(authorsDTO);
+            try
+            {
+                var authors = await _context.Authors.ToListAsync();
+                var authorsDTO = mapper.Map<IEnumerable<AuthorReadOnlyDTO>>(authors);
+                return Ok(authorsDTO);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Error Perfoming GET in {nameof(GetAuthors)}");
+                return StatusCode(500, ErrorMessage.Message);
+            }
         }
 
         // GET: api/Authors/5
@@ -42,6 +53,7 @@ namespace BookStore.API.Controllers
 
             if (author == null)
             {
+                logger.LogWarning($"Record Not Found: {nameof(GetAuthor)} - ID: {id}");
                 return NotFound();
             }
 
@@ -49,7 +61,7 @@ namespace BookStore.API.Controllers
             return Ok(authorDTO);
         }
 
-        // PUT: api/Authors/5
+        // PUT: api/Authors/5 
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutAuthor(int id, AuthorUpdateDTO authorDTO)

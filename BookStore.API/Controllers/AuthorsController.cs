@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookStore.API.Data;
-using BookStore.API.DTO_Models.Author;
+using BookStore.API.DTOModels.Author;
 using AutoMapper;
 using BookStore.API.Static;
 

@@ -3,17 +3,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BookStore.API.Data;
-using AutoMapper;
-using BookStore.API.DTO_Models.Book;
+using BookStore.API.DTOModels.Book;
 using AutoMapper.QueryableExtensions;
+using AutoMapper;
 
 namespace BookStore.API.Controllers
 {
-    public class BooksController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    public class BooksController : ControllerBase
     {
         private readonly BookStoreDbContext _context;
         private readonly IMapper mapper;

@@ -1,9 +1,14 @@
 ﻿using AutoMapper;
 using BookStore.API.Data;
 using BookStore.API.DTOModels.User;
+using BookStore.API.Static;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace BookStore.API.Controllers
 {
@@ -14,12 +19,14 @@ namespace BookStore.API.Controllers
         private readonly ILogger<AuthController> logger;
         private readonly IMapper mapper;
         private readonly UserManager<APIUser> userManager;
+        private readonly IConfiguration configuration;
 
-        public AuthController(ILogger<AuthController> logger, IMapper mapper, UserManager<APIUser> userManager)
+        public AuthController(ILogger<AuthController> logger, IMapper mapper, UserManager<APIUser> userManager, IConfiguration configuration)
         {
             this.logger = logger;
             this.mapper = mapper;
             this.userManager = userManager;
+            this.configuration = configuration;
         }
 
         [HttpPost]
@@ -52,7 +59,7 @@ namespace BookStore.API.Controllers
         }
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> Login(LoginUserDTO loginUserDTO)
+        public async Task<ActionResult<AuthResponse>> Login(LoginUserDTO loginUserDTO)
         {
             logger.LogInformation($"Registration for {loginUserDTO.Email} ");
             //validation during the login process
@@ -62,15 +69,56 @@ namespace BookStore.API.Controllers
                 var passwordValid = await userManager.CheckPasswordAsync(user, loginUserDTO.Password);
                 if (user == null || passwordValid == false)
                 {
-                    return NotFound();
+                    return Unauthorized(loginUserDTO);
                 }
-                return Accepted();
+
+                string tokenString = await GenerateToken(user);
+
+                var response = new AuthResponse
+                { 
+                    Email = user.Email,
+                    TokenValue = tokenString,
+                    UserId = user.Id
+                };
+
+                return response;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, $"Something Went Wrong In {nameof(Register)} ");
                 return Problem($"Something Went Wrong In {nameof(Register)} ", statusCode: 500);
             }
+        }
+
+        private async Task<string> GenerateToken(APIUser user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var roles = await userManager.GetRolesAsync(user);
+            var roleClaims = roles.Select(c => new Claim(ClaimTypes.Role, c)).ToList();
+            
+            var userClaims = await userManager.GetClaimsAsync(user);
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(CustomClaimTypes.Uid, user.Id),
+
+            }
+            .Union(userClaims)
+            .Union(roleClaims);
+
+            var token = new JwtSecurityToken(
+                issuer: configuration["JwtSettings:Issuer"],
+                audience: configuration["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(Convert.ToInt32(configuration["JwtSetting:Duration"])),
+                signingCredentials: credentials
+                ) ;
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

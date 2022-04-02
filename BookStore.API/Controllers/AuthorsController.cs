@@ -10,11 +10,13 @@ using BookStore.API.Data;
 using BookStore.API.DTOModels.Author;
 using AutoMapper;
 using BookStore.API.Static;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BookStore.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     public class AuthorsController : ControllerBase
     {
         private readonly BookStoreDbContext _context;
